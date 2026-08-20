@@ -95,7 +95,7 @@ class MQTTAgent(mqtt.Client):
     #===========================================================================
     # On Connection call back.
     #===========================================================================
-    def on_connect(self, mqttc, obj, flags, rc):
+    def on_connect(self, mqttc, obj, flags, rc, properties=None):
         self.xLogging.debug("Connected")
         for o in self.xObservers:
             o.online()
@@ -111,12 +111,16 @@ class MQTTAgent(mqtt.Client):
         for o in self.xObservers:
             o.received()
         for r in self.xRouters:
-            if (r.route(msg.topic, msg.payload, self)):
-                return
+            try:
+                if (r.route(msg.topic, msg.payload, self)):
+                    return
+            except Exception as e:
+                self.xLogging.exception("Error occurred while routing message")
+      
     #=======================================================================
     # on disconnect callb ack. 
     #=======================================================================
-    def on_disconnect(self, client, userdata, rc):
+    def on_disconnect(self, client, userdata, rc, properties=None):
         self.xLogging.debug("Disconnected %d"%rc)
         for o in self.xObservers:
             o.offline()
@@ -127,7 +131,7 @@ class MQTTAgent(mqtt.Client):
    #========================================================================
    # on publish call back
    #========================================================================
-    def on_publish(self, client, userdata, mid):
+    def on_publish(self, client, userdata, mid, properties=None):
         for o in self.xObservers:
             o.sent()
     

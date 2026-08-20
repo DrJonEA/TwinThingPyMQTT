@@ -16,8 +16,9 @@ diconnected_topic = "TNG/" + user + "/LC/OFF"
 tng_topics = "#"
 
 # The callback for when the client receives a CONNACK response from the server.
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, rc, properties=None):
     print("Connected with result code "+str(rc))
+    print("Client: %s User: %s"%(user, user))
 
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
@@ -29,7 +30,7 @@ def on_message(client, userdata, msg):
     print("Rcv topic=" +msg.topic+" msg="+str(msg.payload))
     
 
-def on_disconnect():
+def on_disconnect(client, userdata, rc, properties=None):
     print("DISCONNNECTED")
 
 
@@ -56,4 +57,4 @@ client.publish(connected_topic,p,retain=False,qos=1)
 
 
 
-time.sleep(200)
+time.sleep(1200)

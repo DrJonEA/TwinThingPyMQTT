@@ -1,4 +1,5 @@
 import paho.mqtt.client as mqtt
+import paho.mqtt as paho
 import json
 import time
 import os
@@ -8,6 +9,9 @@ if (len(sys.argv) != 2):
     print("Require target ID as parater")
     sys.exit()
 
+
+print('paho version', getattr(paho,'__version__', 'unknown'))
+print('client module', mqtt.__file__)
 
 targetId = sys.argv[1]
 
@@ -27,7 +31,7 @@ pong_topic = "TNG/+/TPC/PONG"
 lc_topic = "TNG/" + targetId + "/LC/#"
 
 # The callback for when the client receives a CONNACK response from the server.
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, rc, properties=None):
     print("Connected with result code "+str(rc))
 
     # Subscribing in on_connect() means that if we lose the connection and

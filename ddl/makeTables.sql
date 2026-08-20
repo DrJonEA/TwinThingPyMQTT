@@ -40,3 +40,15 @@ CREATE TABLE IF NOT EXISTS `twin` (
   `declinedMeta` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
   PRIMARY KEY (`clientId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE IF NOT EXISTS `twinlog` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `level` varchar(20) NOT NULL,
+  `msg` text NOT NULL,
+  `detail` text NOT NULL,
+  `service` varchar(100) NOT NULL,
+  `source` varchar(100) NOT NULL,
+  `sourceTS` timestamp NOT NULL,
+  `ts` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

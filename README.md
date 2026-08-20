@@ -1,102 +1,162 @@
 # TwinThingPyMQTT
-Twin Thing Python framework against MQTT. Plus TwinMgr to manage a central
+
+TwinThing Python framework for MQTT, plus TwinMgr for managing a central
 digital twin.
 
 ## Framework
 
-MQTT Framework in Python to produce IoT MQTT clients to the same spec as my C++ library for Raspberry Pi PICO [TwinThingsPicoESP](https://github.com/jondurrant/twinThingPicoESP).
+This Python MQTT framework produces IoT clients that follow the same specification
+as the C++ library for Raspberry Pi Pico, [TwinThingsPico1-2W](https://github.com/DrJonEA/twinThingPico1-2W).
 
-Clients operate as IoT clients with state and operate on a standard set of topics to report, request and set state.
+Clients operate as IoT devices with state and use a standard set of topics to report,
+request, and set state.
 
 ## TwinMgr
-TwinMgr uses the Framework to provide a local digital twin of a device. Clients can then operate through the digital twin rather than direct to client. This has the advantage that the twin will hold state until the device becomes available and then update the device.
+TwinMgr uses the framework to provide a local digital twin of a device. Clients can
+operate through the digital twin rather than communicating directly with the device.
+The twin holds state while the device is unavailable and updates the device when it
+becomes available.
 
-The TwinMgt can also operate on devices in a group. Including pull back all states for the group or seting particular attributes on all devices within the group.
+TwinMgr can also operate on devices in a group, including retrieving all group state
+or setting particular attributes on all devices in the group.
 
-# Dependencies - Python
-+ Python3
-+ dotmap
-+ numpy
-+ paho-mqtt
-+ pandas
-+ PyMySQL
-+ pyOpenSSL
-+ SQLAlchemy
-+ [twinThing](https://github.com/jondurrant/twinThing) 
-+ mysql Db
-+ [emqx](https://www.emqx.io/) using Mysql authentication 
+# Dependencies
+
+- Python 3
+- Python packages listed in `src/requirements.txt`
+- MySQL database
+- [EMQX](https://www.emqx.io/) with MySQL authentication and authorization
+- [twinThing](https://github.com/jondurrant/twinThing)
 
 # File Structure
-+ src/ - library files
-+ src/mainTwinMgr.py - main program for the Twin Manager
-+ example/ - Simple example of a stateful IoT client
-+ exp/ - Experimental code
-+ lib/ - non pip packages used by the code. My twinThing library
-+ test/ - some test python scripts to interact with the TwinMgt
-+ ddl/ - mysql table structure.
+
+- `src/` - application and library files
+- `src/mainTwinMgr.py` - main program for TwinMgr
+- `example/` - simple examples of stateful IoT clients
+- `exp/` - experimental code
+- `libs/` - non-PyPI packages used by the code, including TwinThing
+- `test/` - test scripts that interact with TwinMgr
+- `ddl/` - MySQL table definitions
 
 
 # Deployment - TwinMgr
-Dockerfile to build the TwinMgr as a docker image is included.
 
-TwinMgt expects some environment variables to be setup. These are:
-+ MQTT_USER - Username and Client Id to connect to MQTT
-+ MQTT_PASSWD - Password to authenticate against MQTT
-+ MQTT_HOST - Hostname of MQTT server
-+ MQTT_PORT - Port that MQTT is listen on, normally 1883
-+ MQTT_CERT - If using SSL, then the SSL chain certificate to validate against
-+ TWIN_DB_USER - Username for database containing the Twin table and the EMQX ACL
-+ TWIN_DB_PASSWD - Password to authenticate against database
-+ TWIN_DB_HOST - Database host name
-+ TWIN_DB_PORT - Database port
-+ TWIN_DB_SCHEMA - Schema used for the Twin table and the EMQX tables
+The included `Dockerfile` builds TwinMgr as a Docker image.
+
+TwinMgr expects the following environment variables:
+
+- `MQTT_USER` - MQTT username and client ID
+- `MQTT_PASSWD` - MQTT password
+- `MQTT_HOST` - MQTT broker hostname
+- `MQTT_PORT` - MQTT broker port, normally 1883 or 8883
+- `MQTT_CERT` - CA certificate chain used to validate the broker when TLS is enabled
+- `TWIN_DB_USER` - Database username for the Twin and EMQX tables
+- `TWIN_DB_PASSWD` - Database password
+- `TWIN_DB_HOST` - Database hostname
+- `TWIN_DB_PORT` - Database port
+- `TWIN_DB_SCHEMA` - Database schema containing the Twin and EMQX tables
+
+The Docker Compose deployment passes these values from the generated root `.env` file.
+Ensure the CA certificate is mounted into the container when `MQTT_CERT` is used.
 
 
 # MQTT Server
-Though the framework will work with any MQTT the TwinMgr is specific to EMQX running with MySQl authentication. This is because it uses the group topic ACL to identify which devices are in which group.
+
+The framework can work with any MQTT broker, but TwinMgr is currently specific to
+EMQX using MySQL authentication and authorization. It relies on topic ACLs to
+control access to device and group topics.
 
 ## Topic Structure
-I've tried to condence literals a bit. 
+The topic structure is summarized below.
 
-TNG/<ID>/ - THING / ID, same as user name in my example
-TNG/<ID>/LC - LC is lifecycle and annouces connection and disconnection
-TNG/<ID>/TPC - TOPIC, for messaging to a specific thing
+- `TNG/<ID>/` - device namespace; in this example, `<ID>` is also the MQTT username
+- `TNG/<ID>/LC` - lifecycle events that announce connection and disconnection
+- `TNG/<ID>/TPC` - messaging topics for a specific device
 
-Example assuming you name the pico as "pico"
-+ TNG/pico/TPC/PING - ping re	quest sent to pico
-+ TNG/pico/TPC/PONG - pong as response to the ping
+For example, if a Pico is named `pico`:
 
-Group topics also exist in the structure under.
+- `TNG/pico/TPC/PING` - ping request sent to Pico
+- `TNG/pico/TPC/PONG` - pong response to the ping
 
-GRP/<Group>/TPC/ - Topics to talk to group of devices
+Group topics use the following structure:
 
-Examle:
-GRP/ALL/TPC/PING - ping topic that all IoT devices listen for.
+- `GRP/<Group>/TPC/` - topics for communicating with a group of devices
 
-The TwinMgr add topics to a thing of:
-TNG/<ID>/TWIN/GET - Get twin state
-TNG/<ID>/TWIN/SET - Set twin state
-TNG/<ID>/TWIN/UPD - Reports result of get (provides desired, reported and declined versions of state plus metadata)
-TNG/<ID>/TWIN/RES - If query language is used for GET then response sent to RES rather than update
+For example:
 
-Add group topics of:
-GRP/<GRP>/TWIN/GET - using group query language
-GRP/<GRP>/TWIN/SET - using group query language
-GRP/<GRP>/TWIN/RES - result of get
+- `GRP/ALL/TPC/PING` - a ping topic to which all IoT devices listen
 
-See test/things as examples of test code which execute these topic APIs.
+TwinMgr adds these topics for an individual device:
+
+- `TNG/<ID>/TWIN/GET` - get twin state
+- `TNG/<ID>/TWIN/SET` - set twin state
+- `TNG/<ID>/TWIN/UPD` - report twin state, including desired, reported, and declined state and metadata
+- `TNG/<ID>/TWIN/RES` - return a query response when query syntax is used with `GET`
+
+Group twin topics are:
+
+- `GRP/<GRP>/TWIN/GET` - get group state using the group query syntax
+- `GRP/<GRP>/TWIN/SET` - set group state using the group query syntax
+- `GRP/<GRP>/TWIN/RES` - return group query results
+
+See `test/things/` for examples that exercise these topic APIs.
+
+## Log Topic
+
+Services publish operational log messages to the shared group log topic:
+
+- `GRP/ALL/TPC/LOG` - service status and diagnostic messages
+
+The Test Monitor publishes a JSON payload with this structure:
+
+```json
+{
+	"source": "healthcheck-monitor",
+	"service": "oracIoTHub.monitor",
+	"sourceTS": 1715789478,
+	"level": "info",
+	"msg": "Passed: 5 | Skipped: 1 | Failed: 0",
+	"detail": "[]"
+}
+```
+
+Field definitions:
+
+- `source` - MQTT client ID that generated the message
+- `service` - logical service name
+- `sourceTS` - Unix timestamp in seconds when the message was generated
+- `level` - log severity, such as `info`, `warning`, or `error`
+- `msg` - human-readable summary
+- `detail` - JSON-encoded details; for the Test Monitor, this contains the failed test names
 
 ## Clients
-You will need to setup users and permissions for your clients.
+You must configure users and permissions for your clients.
 
-I run the default rule to deny everything unless otherwise granted:
-Default rule: {
+The default policy should deny everything unless explicitly allowed. With EMQX 6
+and the MySQL authorizer, the existing `mqtt_acl` table is mapped as follows:
+
+- `allow = 0` -> `deny`
+- `allow = 1` -> `allow`
+- `access = 1` -> `subscribe`
+- `access = 2` -> `publish`
+- `access = 3` -> `all`
+
+Avoid relying on a database catch-all `deny #` row when using `EMQX_AUTHORIZATION__NO_MATCH=deny`;
+the broker configuration already supplies the default deny policy.
+
+Legacy rule representation:
+
+```json
+{
 	  "topic": "#",
 	  "action": "pubsub",
 	  "access": "deny"
-	}
+}
+```
 
-A device requires the following permissions to be able to operate:
+An individual device requires permissions similar to:
+
+```json
 [
 	{
 	  "topic": "GRP/ALL/TPC/#",
@@ -109,8 +169,11 @@ A device requires the following permissions to be able to operate:
 	  "access": "allow"
 	}
 ]
+```
 
-To give a device access to a group called "saber" the following permissions are required:
+To give a device access to a group called `saber`:
+
+```json
 [
 	{
 	  "topic": "GRP/saber/TPC/#",
@@ -118,8 +181,12 @@ To give a device access to a group called "saber" the following permissions are 
 	  "access": "allow"
 	}
 ]
+```
 
-The TwinMgr requires the following permissions to pubsub to every device and to be able operate the TWIN topic channels both under a device and under group heirachy.
+TwinMgr requires permissions to publish and subscribe to device topics and to
+operate the TWIN channels under both device and group hierarchies:
+
+```json
 [
 	{
 	  "topic": "GRP/+/TWIN/#",
@@ -137,6 +204,10 @@ The TwinMgr requires the following permissions to pubsub to every device and to 
 	  "access": "allow"
 	}
 ]
+```
+
+The exact MySQL ACL rows must also cover the lifecycle subscription filters used
+by TwinMgr, such as `TNG/+/LC/#`, and any group topics it publishes or subscribes to.
 
 
 

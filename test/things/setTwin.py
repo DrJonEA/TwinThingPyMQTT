@@ -28,7 +28,7 @@ get_topic = "TNG/" + targetId + "/TWIN/GET"
 set_topic = "TNG/" + targetId + "/TWIN/SET"
 
 # The callback for when the client receives a CONNACK response from the server.
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, rc, properties=None):
     print("Connected with result code "+str(rc))
 
     # Subscribing in on_connect() means that if we lose the connection and

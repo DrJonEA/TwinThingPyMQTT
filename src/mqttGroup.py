@@ -4,7 +4,7 @@
 
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine, Column
+from sqlalchemy import create_engine, Column, text
 from sqlalchemy.sql.sqltypes import Boolean, String, JSON
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
@@ -29,7 +29,7 @@ class MQTTGroup:
     def getGroupTwinIds(self, session):
         con = session.connection()
         try: 
-            rs = con.execute('SELECT DISTINCT clientid FROM mqtt_acl where topic = "GRP/%s/TPC/#";'%self.name)
+            rs = con.execute(text('SELECT DISTINCT clientid FROM mqtt_acl where topic = "GRP/:group/TPC/#"'), {"group": self.name})
             res = []
             for row in rs:
                 res.append(row[0])

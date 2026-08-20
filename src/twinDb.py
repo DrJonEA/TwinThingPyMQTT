@@ -7,7 +7,7 @@
 from twin import Twin
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine, Column
-from sqlalchemy.sql.sqltypes import Boolean, String, JSON
+from sqlalchemy.sql.sqltypes import Boolean, DateTime, Integer, String, Text, JSON
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
@@ -95,6 +95,19 @@ class TwinTable(Base):
     def __repr__(self):
        return "<Twin(clientId='%s', reported='%s', reportedMeta='%s', desired='%s', desiredMeta='%s', rejected=%d, rejectedMeta=%s)>" % (
             self.clientId, self.reported, self.reportedMeta, self.desired, self.desiredMeta, self.rejected, self.rejectedMeta)
+
+
+class TwinLog(Base):
+    __tablename__ = 'twinlog'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    level = Column(String(20), nullable=False)
+    msg = Column(Text, nullable=False)
+    detail = Column(Text, nullable=False)
+    service = Column(String(100), nullable=False)
+    source = Column(String(100), nullable=False)
+    sourceTS = Column(DateTime, nullable=False)
+    ts = Column(DateTime, nullable=False)
 
 
 

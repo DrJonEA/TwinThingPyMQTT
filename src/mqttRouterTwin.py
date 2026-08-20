@@ -4,11 +4,12 @@
 # 10-Jan-2022
 #===============================================================================
 import logging
+from datetime import datetime, timedelta, timezone
 import paho.mqtt.client as mqtt
 from mqttRouter import MQTTRouter 
 import mqttTopicHelper as topicHelper
 from twinState import TwinState
-from twinDb import TwinDb
+from twinDb import TwinDb, TwinLog
 from mqttGroup import MQTTGroup
 from mqttTwin import MQTTTwin
 from twinState import TwinState
@@ -45,6 +46,10 @@ class MQTTRouterTwin(MQTTRouter):
         
         self.xGrpSet = topicHelper.getTwinGroupSet("+")
         self.xGrpGet = topicHelper.getTwinGroupGet("+")
+
+        self.xGrpLog = topicHelper.genGroupTopic(
+            topicHelper.MQTT_GRP_ALL, 
+            topicHelper.MQTT_TOPIC_LOG)
         
         self.xCache = {}
         
@@ -91,6 +96,7 @@ class MQTTRouterTwin(MQTTRouter):
         interface.subscribe(self.xUpdate, qos=1)
         interface.subscribe(self.xGrpGet, qos=1)
         interface.subscribe(self.xGrpSet, qos=1)
+        interface.subscribe(self.xGrpLog, qos=1)
         
     #=======================================================================
     # Route the published messahes
@@ -170,13 +176,25 @@ class MQTTRouterTwin(MQTTRouter):
             grp = self.tngTarget(topic)
             j = json.loads(payload)
             self.groupSet(grp, j, interface)
+            return True
             
         #Group Get
         if (topicHelper.topicEquals(self.xGrpGet, topic)):
             grp = self.tngTarget(topic)
             j = json.loads(payload)
             self.groupGet(grp, j, interface)
-        
+            return True
+
+        if (topicHelper.topicEquals(self.xGrpLog, topic)):
+            j = json.loads(payload)
+            self.writeLog(
+                j["level"], 
+                j["msg"], 
+                j.get("detail", ""),
+                j["service"], 
+                j["source"], 
+                j["sourceTS"]
+                )
         return False
         
     #===========================================================================
@@ -392,6 +410,54 @@ class MQTTRouterTwin(MQTTRouter):
         }
         self.xState.updateState(delta)
                 
-            
-            
-            
+    #=======================================================================
+    # Log to DB and to the log file
+    #=======================================================================        
+    def writeLog(
+            self, 
+            level: str, 
+            msg: str, 
+            detail: str,
+            service: str, 
+            source: str, 
+            sourceTS: int):
+        log_message = msg if not detail else "%s: %s" % (msg, detail)
+        log_level = getattr(logging, level.upper(), logging.INFO)
+        self.xLogging.log(log_level, "%s [%s] source=%s" % (log_message, service, source))
+
+        if self.session is None:
+            self.xLogging.error("Cannot write log: database session is unavailable")
+            return False
+
+        log_entry = TwinLog(
+            level=level,
+            msg=msg,
+            detail=detail,
+            service=service,
+            source=source,
+            sourceTS=datetime.fromtimestamp(sourceTS, tz=timezone.utc).replace(tzinfo=None),
+            ts=datetime.now(timezone.utc).replace(tzinfo=None),
+        )
+
+        try:
+            self.session.add(log_entry)
+            self.session.commit()
+            return True
+        except exc.SQLAlchemyError:
+            self.session.rollback()
+            self.xLogging.exception("Failed to write log entry to twinlog")
+            return False
+
+    def logHousekeeping(self, removeOlderSeconds: int):
+        if self.session is None:
+            self.xLogging.error("Cannot perform log housekeeping: database session is unavailable")
+            return
+
+        cutoff_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=removeOlderSeconds)
+        try:
+            deleted_count = self.session.query(TwinLog).filter(TwinLog.ts < cutoff_time).delete()
+            self.session.commit()
+            self.xLogging.info("Purged %d log entries older than %d seconds", deleted_count, removeOlderSeconds)
+        except exc.SQLAlchemyError:
+            self.session.rollback()
+            self.xLogging.exception("Failed to perform log housekeeping"    )

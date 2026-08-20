@@ -66,7 +66,8 @@ mqttAgent.addRouter(twinRouter)
 xTimer = None
 def housekeeping():
     print("Housekeeping")
-    twinRouter.cacheHousekeeping(60.0*15)
+    twinRouter.cacheHousekeeping(60.0*15) # 15 minutes
+    twinRouter.logHousekeeping(60*60*24*7) # 7 Days
     xTimer = threading.Timer(60.0*60.0, housekeeping)
     xTimer.start()
 

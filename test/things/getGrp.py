@@ -55,10 +55,10 @@ client.connect(host, port, 60)
 
 client.loop_start()
 
-client.subscribe( lc_topic )
+#client.subscribe( lc_topic )
 
-client.subscribe( state_topics )
-client.subscribe( twin_topics )
+#client.subscribe( state_topics )
+#client.subscribe( twin_topics )
 client.subscribe( grp_topics )
     
 print("publishing connect")

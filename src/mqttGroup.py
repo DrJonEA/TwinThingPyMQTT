@@ -29,7 +29,9 @@ class MQTTGroup:
     def getGroupTwinIds(self, session):
         con = session.connection()
         try: 
-            rs = con.execute(text('SELECT DISTINCT clientid FROM mqtt_acl where topic = "GRP/:group/TPC/#"'), {"group": self.name})
+            rs = con.execute(
+                text('SELECT DISTINCT clientid FROM mqtt_acl WHERE topic = :topic'),
+                {"topic": "GRP/%s/TPC/#" % self.name})
             res = []
             for row in rs:
                 res.append(row[0])
@@ -66,9 +68,16 @@ class MQTTGroup:
             else :
                 sql = sql + ", "
         
-        sql = sql + "FROM twin WHERE clientId in ("
         targets = self.getGroupTwinIds(session)
         targetCount = len(targets)
+        if (targetCount == 0):
+            #Empty group - avoid generating invalid "IN ()" SQL
+            self.xLogging.info("Group %s has no members"%self.name)
+            if (not orient in ["split", "records", "index", "values", "table", "columns"]):
+                orient = "split"
+            return pd.DataFrame().to_json(orient=orient)
+
+        sql = sql + "FROM twin WHERE clientId in ("
         for i in range(targetCount):
             target = targets[i]
             sql = sql + '"' +target + '" '
@@ -89,7 +98,8 @@ class MQTTGroup:
                 orient = "split"
             return frame.to_json( orient=orient)
 
-        except exceptions.SQLAlchemyError as Argument:
+        except (exceptions.SQLAlchemyError, pd.errors.DatabaseError) as Argument:
+            #pandas wraps DB errors in its own DatabaseError
             self.xLogging.exception("Select failed")
             
         return "{}"

@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS `mqtt_user` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `username` varchar(100) DEFAULT NULL,
   `password` varchar(100) DEFAULT NULL,
+  `shadow` varchar(100) DEFAULT NULL,
   `salt` varchar(35) DEFAULT NULL,
   `is_superuser` tinyint(4) DEFAULT 0,
   `created` datetime DEFAULT NULL,
